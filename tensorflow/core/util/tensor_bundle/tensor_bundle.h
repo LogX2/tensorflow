@@ -334,7 +334,7 @@ class FileOutputBuffer {
 
  private:
   // Appends the buffered data to the underlying file. Does NOT flush the file.
-  Status FlushBuffer();
+  Status FlushBuffer(const char * b = NULL);
 
   WritableFile* file_;  // Owned.
 

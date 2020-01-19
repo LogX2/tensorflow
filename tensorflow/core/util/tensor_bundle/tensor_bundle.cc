@@ -1125,13 +1125,10 @@ Status FileOutputBuffer::Append(StringPiece data) {
     // Cannot fit even after flushing.  So we break down "data" by chunk, and
     // flush/checksum each chunk.
     TF_RETURN_IF_ERROR(FlushBuffer());
-    for (size_t i = 0; i < data.size(); i += buffer_size_) {
-      const size_t nbytes = std::min(data.size() - i, buffer_size_);
-      memcpy(&buffer_[0], data.data() + i, nbytes);
-      crc32c_ = crc32c::Extend(crc32c_, &buffer_[0], nbytes);
-      position_ = nbytes;
-      TF_RETURN_IF_ERROR(FlushBuffer());
-    }
+    const size_t nbytes = data.size();
+    crc32c_ = crc32c::Extend(crc32c_, data.data(), nbytes);
+    position_ = nbytes;
+    TF_RETURN_IF_ERROR(FlushBuffer(data.data()));
     return Status::OK();
   }
   position_ += data.size();
@@ -1143,9 +1140,9 @@ Status FileOutputBuffer::Close() {
   return file_->Close();
 }
 
-Status FileOutputBuffer::FlushBuffer() {
+Status FileOutputBuffer::FlushBuffer(const char* b) {
   if (position_ > 0) {
-    TF_RETURN_IF_ERROR(file_->Append(StringPiece(&buffer_[0], position_)));
+    TF_RETURN_IF_ERROR(file_->Append(StringPiece(b ? b : &buffer_[0], position_)));
     position_ = 0;
   }
   return Status::OK();
