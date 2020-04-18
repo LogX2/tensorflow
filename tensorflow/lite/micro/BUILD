@@ -5,6 +5,7 @@ load(
 load(
     "//tensorflow/lite/micro:build_def.bzl",
     "cc_library",
+    "micro_copts",
 )
 
 package(
@@ -18,13 +19,13 @@ cc_library(
         "compatibility.h",
     ],
     build_for_embedded = True,
+    copts = micro_copts(),
 )
 
 cc_library(
     name = "micro_framework",
     srcs = [
         "debug_log.cc",
-        "debug_log_numbers.cc",
         "memory_helpers.cc",
         "micro_allocator.cc",
         "micro_error_reporter.cc",
@@ -35,7 +36,6 @@ cc_library(
     ],
     hdrs = [
         "debug_log.h",
-        "debug_log_numbers.h",
         "memory_helpers.h",
         "micro_allocator.h",
         "micro_error_reporter.h",
@@ -46,21 +46,45 @@ cc_library(
         "test_helpers.h",
     ],
     build_for_embedded = True,
-    copts = [
-        "-Werror",
-        "-Wdouble-promotion",
-        "-Wsign-compare",
-    ],
+    copts = micro_copts(),
     deps = [
         ":micro_compatibility",
+        ":micro_string",
         ":micro_utils",
         "//tensorflow/lite:type_to_tflitetype",
         "//tensorflow/lite/c:common",
         "//tensorflow/lite/core/api",
+        "//tensorflow/lite/kernels/internal:compatibility",
         "//tensorflow/lite/kernels/internal:tensor",
         "//tensorflow/lite/micro/memory_planner:greedy_memory_planner",
         "//tensorflow/lite/schema:schema_fbs",
     ],
+)
+
+cc_library(
+    name = "micro_string",
+    srcs = [
+        "micro_string.cc",
+    ],
+    hdrs = [
+        "micro_string.h",
+    ],
+    build_for_embedded = True,
+    copts = micro_copts(),
+    deps = ["//tensorflow/lite/c:common"],
+)
+
+cc_library(
+    name = "micro_time",
+    srcs = [
+        "posix/micro_time.cc",
+    ],
+    hdrs = [
+        "micro_time.h",
+    ],
+    build_for_embedded = True,
+    copts = micro_copts(),
+    deps = ["//tensorflow/lite/c:common"],
 )
 
 cc_library(
@@ -72,6 +96,7 @@ cc_library(
         "micro_utils.h",
     ],
     build_for_embedded = True,
+    copts = micro_copts(),
     deps = [
         "//tensorflow/lite/c:common",
         "//tensorflow/lite/kernels:op_macros",
@@ -107,6 +132,7 @@ tflite_micro_cc_test(
     deps = [
         ":micro_framework",
         ":micro_utils",
+        "//tensorflow/lite/kernels:kernel_util",
         "//tensorflow/lite/micro/testing:micro_test",
     ],
 )
@@ -162,6 +188,28 @@ tflite_micro_cc_test(
     ],
     deps = [
         ":micro_utils",
+        "//tensorflow/lite/micro/testing:micro_test",
+    ],
+)
+
+tflite_micro_cc_test(
+    name = "micro_string_test",
+    srcs = [
+        "micro_string_test.cc",
+    ],
+    deps = [
+        ":micro_string",
+        "//tensorflow/lite/micro/testing:micro_test",
+    ],
+)
+
+tflite_micro_cc_test(
+    name = "micro_time_test",
+    srcs = [
+        "micro_time_test.cc",
+    ],
+    deps = [
+        ":micro_time",
         "//tensorflow/lite/micro/testing:micro_test",
     ],
 )

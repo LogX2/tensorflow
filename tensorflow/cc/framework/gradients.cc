@@ -346,8 +346,8 @@ Status SymbolicGradientBuilder::SumGradients(const Output& src, Output* grad) {
         "Unable to find backprop list for node.id ", src.node()->name());
   }
   const auto& grads = iter->second;
-  // Filter any backproped 'NoGradient' Outputs from 'grads' (if needed).
-  // Return any valid backproped gradients that remain after filtering,
+  // Filter any backpropped 'NoGradient' Outputs from 'grads' (if needed).
+  // Return any valid backpropped gradients that remain after filtering,
   // or 'NoGradient' otherwise.
   std::vector<Output> grads_to_keep;
   for (const Output& o : grads) {
@@ -519,17 +519,17 @@ Status SymbolicGradientBuilder::AddGradients() {
     // Backprop along the in edges.
     // TODO(andydavis) Find cleaner way to map each grad output returned by
     // gradient function to the src node/output to which it should be
-    // backproped. Maybe grad functions can return a vector of Output pairs to
+    // backpropped. Maybe grad functions can return a vector of Output pairs to
     // make this association explicit.
-    size_t dx_index = 0;
     for (const Edge* e : n->in_edges()) {
       if (e->IsControlEdge()) continue;
-      if (dx_index == dx.size()) {
+      int dx_index = e->dst_input();
+      if (dx_index >= dx.size()) {
         return errors::Internal(
             "Invalid gradient output index: ", dx_index, " size: ", dx.size());
       }
       TF_RETURN_IF_ERROR(
-          BackpropAlongEdge(dx[dx_index++], {e->src(), e->src_output()}));
+          BackpropAlongEdge(dx[dx_index], {e->src(), e->src_output()}));
     }
   }
 

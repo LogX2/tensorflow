@@ -18,8 +18,8 @@ limitations under the License.
 #include <cmath>
 #include <memory>
 
+#include "tensorflow/lite/kernels/internal/cppmath.h"
 #include "tensorflow/lite/kernels/internal/quantization_util.h"
-#include "tensorflow/lite/kernels/internal/round.h"
 
 namespace tflite {
 
@@ -84,10 +84,10 @@ TfLiteStatus PopulateConvolutionQuantizationParams(
                                           filter_scale /
                                           static_cast<double>(output_scale);
     int32_t significand;
-    int shift;
-    QuantizeMultiplier(effective_output_scale, &significand, &shift);
+    int channel_shift;
+    QuantizeMultiplier(effective_output_scale, &significand, &channel_shift);
     per_channel_multiplier[i] = significand;
-    per_channel_shift[i] = shift;
+    per_channel_shift[i] = channel_shift;
   }
 
   // Populate scalar quantization parameters.
@@ -100,7 +100,7 @@ TfLiteStatus PopulateConvolutionQuantizationParams(
         context, input, filter, bias, output, &real_multiplier));
     int exponent;
 
-    // Populate quantization parameteters with multiplier and shift.
+    // Populate quantization parameters with multiplier and shift.
     QuantizeMultiplier(real_multiplier, multiplier, &exponent);
     *shift = -exponent;
   }
@@ -118,14 +118,17 @@ TfLiteStatus GetQuantizedConvolutionMultipler(TfLiteContext* context,
                                               const TfLiteTensor* bias,
                                               TfLiteTensor* output,
                                               double* multiplier) {
-  const double input_product_scale = input->params.scale * filter->params.scale;
+  const double input_product_scale = static_cast<double>(input->params.scale) *
+                                     static_cast<double>(filter->params.scale);
   // TODO(ahentz): The following conditions must be guaranteed by the training
   // pipeline.
   if (bias) {
-    const double bias_scale = bias->params.scale;
-    TF_LITE_ENSURE(context,
-                   std::abs(input_product_scale - bias_scale) <=
-                       1e-6 * std::min(input_product_scale, bias_scale));
+    const double bias_scale = static_cast<double>(bias->params.scale);
+    // Here we're making sure the input_product_scale & bias_scale the same.
+    // Normally this should be guaranteed by the training pipeline, we are
+    // setting the threshold to be 2e-6 to allow some numeric stability
+    // difference.
+    TF_LITE_ENSURE(context, std::abs(input_product_scale - bias_scale) <= 2e-6);
   }
   return GetQuantizedConvolutionMultipler(context, input, filter, output,
                                           multiplier);
@@ -136,9 +139,10 @@ TfLiteStatus GetQuantizedConvolutionMultipler(TfLiteContext* context,
                                               const TfLiteTensor* filter,
                                               TfLiteTensor* output,
                                               double* multiplier) {
-  const double input_product_scale = input->params.scale * filter->params.scale;
+  const double input_product_scale =
+      static_cast<double>(input->params.scale * filter->params.scale);
   TF_LITE_ENSURE(context, input_product_scale >= 0);
-  *multiplier = input_product_scale / output->params.scale;
+  *multiplier = input_product_scale / static_cast<double>(output->params.scale);
 
   return kTfLiteOk;
 }
